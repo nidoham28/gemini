@@ -1,46 +1,54 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/chat_message.dart';
-import '../services/gemini_service.dart';
-
-final geminiServiceProvider = Provider((ref) => GeminiService());
+import '../services/ai_service.dart';
+import 'provider_selection_notifier.dart';
 
 final chatProvider =
 StateNotifierProvider<ChatNotifier, List<ChatMessage>>((ref) {
-  return ChatNotifier(ref.read(geminiServiceProvider));
+  // Rebuilds (and resets chat) whenever the active provider/model changes.
+  final aiService = ref.watch(aiServiceProvider);
+  return ChatNotifier(aiService);
 });
 
 class ChatNotifier extends StateNotifier<List<ChatMessage>> {
-  final GeminiService _geminiService;
+  AiService? _aiService;
   bool _isLoading = false;
   String? _error;
 
-  ChatNotifier(this._geminiService) : super([]);
+  ChatNotifier(this._aiService) : super([]);
 
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  List<Map<String, String>> get _history {
-    return state.map((msg) {
-      return {
-        'role': msg.type == MessageType.user ? 'user' : 'model',
-        'content': msg.text,
-      };
-    }).toList();
-  }
+  void updateService(AiService? service) => _aiService = service;
+
+  List<Map<String, String>> get _history => state.map((msg) {
+    return {
+      'role': msg.type == MessageType.user ? 'user' : 'model',
+      'content': msg.text,
+    };
+  }).toList();
 
   Future<void> sendMessage(String text) async {
     if (text.trim().isEmpty || _isLoading) return;
 
+    if (_aiService == null) {
+      state = [
+        ...state,
+        ChatMessage(
+          text: 'No provider configured. Open Settings to add an API key.',
+          type: MessageType.model,
+          error: 'no_provider',
+        ),
+      ];
+      return;
+    }
+
     _error = null;
     _isLoading = true;
 
-    // Append user message.
-    state = [
-      ...state,
-      ChatMessage(text: text, type: MessageType.user),
-    ];
+    state = [...state, ChatMessage(text: text, type: MessageType.user)];
 
-    // Append empty AI placeholder with streaming flag.
     final aiMessageId = DateTime.now().millisecondsSinceEpoch.toString();
     var aiMessage = ChatMessage(
       id: aiMessageId,
@@ -51,27 +59,18 @@ class ChatNotifier extends StateNotifier<List<ChatMessage>> {
     state = [...state, aiMessage];
 
     try {
-      // ✅ state is now [...priorHistory, userMessage, aiPlaceholder].
-      // Subtract 2 to exclude both trailing entries so the history passed
-      // to the service contains only prior turns — the current user turn
-      // is sent separately via the 'message' parameter.
-      final stream = _geminiService.sendMessageStream(
+      final stream = _aiService!.sendMessageStream(
         message: text,
         history: _history.sublist(0, _history.length - 2),
       );
 
       String fullText = '';
-
       await for (final chunk in stream) {
         fullText += chunk;
         aiMessage = aiMessage.copyWith(text: fullText);
-        state = [
-          ...state.sublist(0, state.length - 1),
-          aiMessage,
-        ];
+        state = [...state.sublist(0, state.length - 1), aiMessage];
       }
 
-      // Mark streaming complete.
       state = [
         ...state.sublist(0, state.length - 1),
         aiMessage.copyWith(isStreaming: false),

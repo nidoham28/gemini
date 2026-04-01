@@ -2,15 +2,29 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+// provider_selection_notifier ফাইলে databaseServiceProvider আছে, তাই এটি ইমপোর্ট করতে হবে
+import 'providers/provider_selection_notifier.dart';
 import 'screens/chat_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: '.env');
+
+  // Load .env if it exists (Gemini key can still be seeded this way).
+  try {
+    await dotenv.load(fileName: '.env');
+  } catch (_) {
+    // .env is optional; keys are now stored in SQLite.
+  }
+
+  // Warm up the database so it's ready before the first frame.
+  final container = ProviderContainer();
+  await container.read(databaseServiceProvider).database;
 
   runApp(
-    const ProviderScope(
-      child: MyApp(),
+    UncontrolledProviderScope(
+      container: container,
+      child: const MyApp(),
     ),
   );
 }
@@ -21,7 +35,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Gemini',
+      title: 'AI Chat',
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.system,
       theme: _lightTheme(),
@@ -63,6 +77,11 @@ class MyApp extends StatelessWidget {
         color: Color(0xFFFFFFFF),
         surfaceTintColor: Colors.transparent,
       ),
+      inputDecorationTheme: InputDecorationTheme(
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        contentPadding:
+        const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      ),
     );
   }
 
@@ -98,6 +117,13 @@ class MyApp extends StatelessWidget {
       popupMenuTheme: const PopupMenuThemeData(
         color: Color(0xFF282A2C),
         surfaceTintColor: Colors.transparent,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        contentPadding:
+        const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        filled: true,
+        fillColor: const Color(0xFF282A2C),
       ),
     );
   }

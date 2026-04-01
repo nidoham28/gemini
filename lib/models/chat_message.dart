@@ -1,6 +1,6 @@
 import 'package:uuid/uuid.dart';
 
-var uuid = const Uuid();
+const _uuid = Uuid();
 
 enum MessageType { user, model }
 
@@ -19,7 +19,7 @@ class ChatMessage {
     DateTime? timestamp,
     this.isStreaming = false,
     this.error,
-  })  : id = id ?? uuid.v4(),
+  })  : id = id ?? _uuid.v4(),
         timestamp = timestamp ?? DateTime.now();
 
   ChatMessage copyWith({
