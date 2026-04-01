@@ -28,34 +28,48 @@ class _TypingIndicatorState extends State<TypingIndicator>
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(left: 16, bottom: 16),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE8EAED),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: List.generate(3, (index) {
-          return AnimatedBuilder(
-            animation: _controller,
-            builder: (context, child) {
-              final delay = index * 0.3;
-              final progress = ((_controller.value + delay) % 1.0);
-              final opacity = 0.3 + (progress * 0.7);
-              return Container(
-                margin: const EdgeInsets.symmetric(horizontal: 2),
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: Colors.grey[600]!.withOpacity(opacity),
-                  shape: BoxShape.circle,
-                ),
-              );
-            },
-          );
-        }),
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(left: 52, bottom: 8, top: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+            bottomLeft: Radius.circular(4),
+            bottomRight: Radius.circular(20),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(3, (index) {
+            return AnimatedBuilder(
+              animation: _controller,
+              builder: (context, child) {
+                final delay = index * 0.3;
+                final progress = ((_controller.value + delay) % 1.0);
+                final scale = 0.6 + (progress * 0.4);
+                return Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 2.5),
+                  width: 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    color: colorScheme.onSurfaceVariant.withOpacity(
+                      0.4 + progress * 0.6,
+                    ),
+                    shape: BoxShape.circle,
+                  ),
+                  transform: Matrix4.identity()
+                    ..translate(0.0, -scale * 2, 0.0),
+                );
+              },
+            );
+          }),
+        ),
       ),
     );
   }

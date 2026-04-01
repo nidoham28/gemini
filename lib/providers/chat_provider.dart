@@ -1,11 +1,11 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/chat_message.dart';
 import '../services/gemini_service.dart';
 
 final geminiServiceProvider = Provider((ref) => GeminiService());
 
-final chatProvider = StateNotifierProvider<ChatNotifier, List<ChatMessage>>((ref) {
+final chatProvider =
+StateNotifierProvider<ChatNotifier, List<ChatMessage>>((ref) {
   return ChatNotifier(ref.read(geminiServiceProvider));
 });
 
@@ -29,17 +29,18 @@ class ChatNotifier extends StateNotifier<List<ChatMessage>> {
   }
 
   Future<void> sendMessage(String text) async {
-    if (text.trim().isEmpty) return;
+    if (text.trim().isEmpty || _isLoading) return;
 
     _error = null;
     _isLoading = true;
 
-    final userMessage = ChatMessage(
-      text: text,
-      type: MessageType.user,
-    );
-    state = [...state, userMessage];
+    // Append user message.
+    state = [
+      ...state,
+      ChatMessage(text: text, type: MessageType.user),
+    ];
 
+    // Append empty AI placeholder with streaming flag.
     final aiMessageId = DateTime.now().millisecondsSinceEpoch.toString();
     var aiMessage = ChatMessage(
       id: aiMessageId,
@@ -50,29 +51,31 @@ class ChatNotifier extends StateNotifier<List<ChatMessage>> {
     state = [...state, aiMessage];
 
     try {
+      // ✅ state is now [...priorHistory, userMessage, aiPlaceholder].
+      // Subtract 2 to exclude both trailing entries so the history passed
+      // to the service contains only prior turns — the current user turn
+      // is sent separately via the 'message' parameter.
       final stream = _geminiService.sendMessageStream(
         message: text,
-        history: _history.sublist(0, _history.length - 1),
+        history: _history.sublist(0, _history.length - 2),
       );
 
       String fullText = '';
 
       await for (final chunk in stream) {
         fullText += chunk;
-
         aiMessage = aiMessage.copyWith(text: fullText);
-
         state = [
           ...state.sublist(0, state.length - 1),
           aiMessage,
         ];
       }
 
+      // Mark streaming complete.
       state = [
         ...state.sublist(0, state.length - 1),
         aiMessage.copyWith(isStreaming: false),
       ];
-
     } catch (e) {
       _error = e.toString();
       state = [

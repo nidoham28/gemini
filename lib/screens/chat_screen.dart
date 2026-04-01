@@ -35,66 +35,59 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final messages = ref.watch(chatProvider);
     final isLoading = ref.read(chatProvider.notifier).isLoading;
 
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
 
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
         centerTitle: true,
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [
-                    Color(0xFF4285F4),
-                    Color(0xFF34A853),
-                    Color(0xFFFBBC05),
-                    Color(0xFFEA4335),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Icon(
-                Icons.auto_awesome,
-                color: Colors.white,
-                size: 16,
-              ),
-            ),
+            _GeminiLogo(size: 28),
             const SizedBox(width: 8),
             Text(
               'Gemini',
               style: GoogleFonts.roboto(
-                color: const Color(0xFF202124),
+                color: colorScheme.onSurface,
                 fontSize: 20,
                 fontWeight: FontWeight.w500,
               ),
             ),
-            const Icon(Icons.keyboard_arrow_down, color: Color(0xFF5F6368)),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              color: colorScheme.onSurfaceVariant,
+            ),
           ],
         ),
         actions: [
           PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert, color: Color(0xFF5F6368)),
+            icon: Icon(Icons.more_vert, color: colorScheme.onSurfaceVariant),
             onSelected: (value) {
               if (value == 'clear') {
                 ref.read(chatProvider.notifier).clearChat();
               }
             },
             itemBuilder: (context) => [
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'clear',
-                child: Text('Clear chat'),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.delete_outline,
+                      size: 20,
+                      color: colorScheme.onSurface,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Clear chat',
+                      style: GoogleFonts.roboto(color: colorScheme.onSurface),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -104,7 +97,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         children: [
           Expanded(
             child: messages.isEmpty
-                ? _buildWelcomeScreen()
+                ? _buildWelcomeScreen(context)
                 : ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -119,10 +112,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               },
             ),
           ),
-          if (isLoading && messages.isNotEmpty && messages.last.type != MessageType.model)
+          if (isLoading &&
+              messages.isNotEmpty &&
+              messages.last.type != MessageType.model)
             const TypingIndicator(),
           ChatInput(
-            onSend: (text) => ref.read(chatProvider.notifier).sendMessage(text),
+            onSend: (text) =>
+                ref.read(chatProvider.notifier).sendMessage(text),
             isLoading: isLoading,
           ),
         ],
@@ -130,76 +126,148 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-  Widget _buildWelcomeScreen() {
+  Widget _buildWelcomeScreen(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    final suggestions = [
+      ('Help me write a Flutter app', Icons.code_rounded),
+      ('Explain quantum computing', Icons.science_rounded),
+      ('Write a poem about coding', Icons.edit_rounded),
+      ('Debug this error message', Icons.bug_report_rounded),
+    ];
+
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _GeminiLogo(size: 56),
+            const SizedBox(height: 20),
+            ShaderMask(
+              shaderCallback: (bounds) => const LinearGradient(
                 colors: [
                   Color(0xFF4285F4),
-                  Color(0xFF34A853),
-                  Color(0xFFFBBC05),
-                  Color(0xFFEA4335),
+                  Color(0xFF9B72CB),
+                  Color(0xFFD96570),
                 ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+              ).createShader(bounds),
+              child: Text(
+                'Hello, there',
+                style: GoogleFonts.roboto(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
               ),
-              borderRadius: BorderRadius.circular(32),
             ),
-            child: const Icon(
-              Icons.auto_awesome,
-              color: Colors.white,
-              size: 32,
+            const SizedBox(height: 8),
+            Text(
+              'How can I help you today?',
+              style: GoogleFonts.roboto(
+                color: colorScheme.onSurfaceVariant,
+                fontSize: 18,
+                fontWeight: FontWeight.w400,
+              ),
             ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'How can I help you today?',
-            style: GoogleFonts.roboto(
-              color: const Color(0xFF202124),
-              fontSize: 24,
-              fontWeight: FontWeight.w400,
+            const SizedBox(height: 40),
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 2,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 1.5,
+              children: suggestions.map((item) {
+                return _SuggestionCard(
+                  label: item.$1,
+                  icon: item.$2,
+                  onTap: () =>
+                      ref.read(chatProvider.notifier).sendMessage(item.$1),
+                );
+              }).toList(),
             ),
-          ),
-          const SizedBox(height: 32),
-          _buildSuggestionChips(),
-        ],
+          ],
+        ),
       ),
     );
   }
+}
 
-  Widget _buildSuggestionChips() {
-    final suggestions = [
-      'Help me write a Flutter app',
-      'Explain quantum computing',
-      'Write a poem about coding',
-      'Debug this error message',
-    ];
+class _SuggestionCard extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
 
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      alignment: WrapAlignment.center,
-      children: suggestions.map((suggestion) {
-        return ActionChip(
-          backgroundColor: const Color(0xFFF1F3F4),
-          label: Text(
-            suggestion,
-            style: GoogleFonts.roboto(
-              color: const Color(0xFF3C4043),
-              fontSize: 14,
+  const _SuggestionCard({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Icon(icon, color: colorScheme.primary, size: 22),
+            Text(
+              label,
+              style: GoogleFonts.roboto(
+                color: colorScheme.onSurface,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                height: 1.3,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
-          ),
-          onPressed: () {
-            ref.read(chatProvider.notifier).sendMessage(suggestion);
-          },
-        );
-      }).toList(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GeminiLogo extends StatelessWidget {
+  final double size;
+  const _GeminiLogo({required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFF4285F4),
+            Color(0xFF34A853),
+            Color(0xFFFBBC05),
+            Color(0xFFEA4335),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(size / 2),
+      ),
+      child: Icon(
+        Icons.auto_awesome,
+        color: Colors.white,
+        size: size * 0.5,
+      ),
     );
   }
 }

@@ -16,23 +16,37 @@ class MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isUser = message.type == MessageType.user;
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final userBubbleColor = isDark
+        ? const Color(0xFF004A77)
+        : const Color(0xFF1A73E8);
+    final modelBubbleColor = colorScheme.surfaceContainerHighest;
+    final userTextColor = Colors.white;
+    final modelTextColor = colorScheme.onSurface;
+    final codeBackground = isDark
+        ? const Color(0xFF1E1F20)
+        : const Color(0xFFF1F3F4);
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment:
+        isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
-          if (!isUser) _buildAvatar(),
+          if (!isUser) _buildModelAvatar(),
           if (!isUser) const SizedBox(width: 8),
           Flexible(
             child: Container(
               constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.75,
+                maxWidth: MediaQuery.of(context).size.width * 0.78,
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: isUser ? const Color(0xFF1A73E8) : const Color(0xFFE8EAED),
+                color: isUser ? userBubbleColor : modelBubbleColor,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(20),
                   topRight: const Radius.circular(20),
@@ -47,9 +61,9 @@ class MessageBubble extends StatelessWidget {
                     Text(
                       message.text,
                       style: GoogleFonts.roboto(
-                        color: Colors.white,
+                        color: userTextColor,
                         fontSize: 15,
-                        height: 1.4,
+                        height: 1.5,
                       ),
                     )
                   else
@@ -57,70 +71,86 @@ class MessageBubble extends StatelessWidget {
                       data: message.text,
                       styleSheet: MarkdownStyleSheet(
                         p: GoogleFonts.roboto(
-                          color: const Color(0xFF3C4043),
+                          color: modelTextColor,
                           fontSize: 15,
-                          height: 1.5,
+                          height: 1.6,
                         ),
                         code: GoogleFonts.robotoMono(
-                          backgroundColor: const Color(0xFFF1F3F4),
-                          color: const Color(0xFF188038),
+                          backgroundColor: codeBackground,
+                          color: isDark
+                              ? const Color(0xFF81C995)
+                              : const Color(0xFF188038),
                           fontSize: 13,
                         ),
                         codeblockDecoration: BoxDecoration(
-                          color: const Color(0xFFF1F3F4),
+                          color: codeBackground,
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        a: GoogleFonts.robotoMono(
-                          fontSize: 13,
-                          color: const Color(0xFF3C4043),
-                        ),
                         h1: GoogleFonts.roboto(
-                          color: const Color(0xFF202124),
+                          color: modelTextColor,
                           fontSize: 20,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w600,
                         ),
                         h2: GoogleFonts.roboto(
-                          color: const Color(0xFF202124),
+                          color: modelTextColor,
                           fontSize: 18,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w600,
                         ),
                         h3: GoogleFonts.roboto(
-                          color: const Color(0xFF202124),
+                          color: modelTextColor,
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
                         ),
                         strong: GoogleFonts.roboto(
-                          color: const Color(0xFF202124),
+                          color: modelTextColor,
                           fontWeight: FontWeight.w600,
                         ),
+                        em: GoogleFonts.roboto(
+                          color: modelTextColor,
+                          fontStyle: FontStyle.italic,
+                        ),
                         listBullet: GoogleFonts.roboto(
-                          color: const Color(0xFF3C4043),
+                          color: modelTextColor,
                           fontSize: 15,
+                        ),
+                        blockquoteDecoration: BoxDecoration(
+                          color: codeBackground,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border(
+                            left: BorderSide(
+                              color: colorScheme.primary,
+                              width: 3,
+                            ),
+                          ),
                         ),
                       ),
                     ),
+                  // Blinking cursor while streaming
                   if (message.isStreaming && isLatest)
                     Container(
                       width: 2,
                       height: 18,
-                      color: const Color(0xFF1A73E8),
                       margin: const EdgeInsets.only(top: 4),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary,
+                        borderRadius: BorderRadius.circular(1),
+                      ),
                     ),
                 ],
               ),
             ),
           ),
           if (isUser) const SizedBox(width: 8),
-          if (isUser) _buildUserAvatar(),
+          if (isUser) _buildUserAvatar(colorScheme),
         ],
       ),
     );
   }
 
-  Widget _buildAvatar() {
+  Widget _buildModelAvatar() {
     return Container(
-      width: 32,
-      height: 32,
+      width: 28,
+      height: 28,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [
@@ -132,25 +162,29 @@ class MessageBubble extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: const Icon(
         Icons.auto_awesome,
         color: Colors.white,
-        size: 16,
+        size: 14,
       ),
     );
   }
 
-  Widget _buildUserAvatar() {
+  Widget _buildUserAvatar(ColorScheme colorScheme) {
     return Container(
-      width: 32,
-      height: 32,
+      width: 28,
+      height: 28,
       decoration: BoxDecoration(
-        color: Colors.grey[400],
+        color: colorScheme.surfaceContainerHighest,
         shape: BoxShape.circle,
       ),
-      child: const Icon(Icons.person, color: Colors.white, size: 18),
+      child: Icon(
+        Icons.person_rounded,
+        color: colorScheme.onSurfaceVariant,
+        size: 16,
+      ),
     );
   }
 }

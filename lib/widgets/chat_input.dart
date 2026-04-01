@@ -24,9 +24,7 @@ class _ChatInputState extends State<ChatInput> {
   void initState() {
     super.initState();
     _controller.addListener(() {
-      setState(() {
-        _hasText = _controller.text.trim().isNotEmpty;
-      });
+      setState(() => _hasText = _controller.text.trim().isNotEmpty);
     });
   }
 
@@ -48,87 +46,140 @@ class _ChatInputState extends State<ChatInput> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colorScheme.surface,
         border: Border(
-          top: BorderSide(color: Colors.grey[200]!),
+          top: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.4)),
         ),
       ),
       child: SafeArea(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            IconButton(
-              icon: const Icon(Icons.add_circle_outline, color: Color(0xFF5F6368)),
-              onPressed: () {},
-            ),
             Expanded(
               child: Container(
-                constraints: const BoxConstraints(maxHeight: 120),
+                constraints: const BoxConstraints(maxHeight: 140),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF1F3F4),
-                  borderRadius: BorderRadius.circular(24),
+                  color: isDark
+                      ? const Color(0xFF282A2C)
+                      : const Color(0xFFF1F3F4),
+                  borderRadius: BorderRadius.circular(28),
                 ),
-                child: TextField(
-                  controller: _controller,
-                  focusNode: _focusNode,
-                  maxLines: null,
-                  textInputAction: TextInputAction.send,
-                  onSubmitted: (_) => _send(),
-                  decoration: InputDecoration(
-                    hintText: 'Message Gemini',
-                    hintStyle: GoogleFonts.roboto(
-                      color: const Color(0xFF5F6368),
-                      fontSize: 16,
-                    ),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 14,
-                    ),
-                    suffixIcon: _hasText
-                        ? null
-                        : IconButton(
-                      icon: const Icon(Icons.mic, color: Color(0xFF5F6368)),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    const SizedBox(width: 4),
+                    IconButton(
+                      icon: Icon(
+                        Icons.add_circle_outline_rounded,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
                       onPressed: () {},
                     ),
-                  ),
-                  style: GoogleFonts.roboto(
-                    fontSize: 16,
-                    color: const Color(0xFF202124),
-                  ),
+                    Expanded(
+                      child: TextField(
+                        controller: _controller,
+                        focusNode: _focusNode,
+                        maxLines: null,
+                        textInputAction: TextInputAction.newline,
+                        onSubmitted: (_) => _send(),
+                        style: GoogleFonts.roboto(
+                          fontSize: 16,
+                          color: colorScheme.onSurface,
+                          height: 1.4,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'Ask Gemini',
+                          hintStyle: GoogleFonts.roboto(
+                            color: colorScheme.onSurfaceVariant,
+                            fontSize: 16,
+                          ),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 14,
+                          ),
+                        ),
+                        cursorColor: colorScheme.primary,
+                      ),
+                    ),
+                    if (!_hasText)
+                      IconButton(
+                        icon: Icon(
+                          Icons.mic_none_rounded,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                        onPressed: () {},
+                      )
+                    else
+                      const SizedBox(width: 8),
+                  ],
                 ),
               ),
             ),
             const SizedBox(width: 8),
-            GestureDetector(
+            _SendButton(
+              hasText: _hasText,
+              isLoading: widget.isLoading,
               onTap: _send,
-              child: Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: _hasText && !widget.isLoading
-                      ? const Color(0xFF1A73E8)
-                      : const Color(0xFFDADCE0),
-                  shape: BoxShape.circle,
-                ),
-                child: widget.isLoading
-                    ? const Padding(
-                  padding: EdgeInsets.all(12),
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Color(0xFF5F6368),
-                  ),
-                )
-                    : Icon(
-                  Icons.arrow_upward,
-                  color: _hasText ? Colors.white : const Color(0xFF5F6368),
-                ),
-              ),
+              colorScheme: colorScheme,
+              isDark: isDark,
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SendButton extends StatelessWidget {
+  final bool hasText;
+  final bool isLoading;
+  final VoidCallback onTap;
+  final ColorScheme colorScheme;
+  final bool isDark;
+
+  const _SendButton({
+    required this.hasText,
+    required this.isLoading,
+    required this.onTap,
+    required this.colorScheme,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final active = hasText && !isLoading;
+    final bgColor = active
+        ? colorScheme.primary
+        : (isDark ? const Color(0xFF282A2C) : const Color(0xFFE8EAED));
+
+    return GestureDetector(
+      onTap: active ? onTap : null,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: 46,
+        height: 46,
+        decoration: BoxDecoration(
+          color: bgColor,
+          shape: BoxShape.circle,
+        ),
+        child: isLoading
+            ? Padding(
+          padding: const EdgeInsets.all(13),
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: colorScheme.onSurfaceVariant,
+          ),
+        )
+            : Icon(
+          Icons.arrow_upward_rounded,
+          color: active ? Colors.white : colorScheme.onSurfaceVariant,
+          size: 22,
         ),
       ),
     );
