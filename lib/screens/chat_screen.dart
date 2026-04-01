@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/chat_message.dart';
-import '../services/chat_provider.dart';
+import '../providers/chat_provider.dart';
 import '../widgets/chat_input.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/typing_indicator.dart';

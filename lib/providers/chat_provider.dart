@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/chat_message.dart';
 import '../services/gemini_service.dart';
@@ -11,10 +12,12 @@ final chatProvider = StateNotifierProvider<ChatNotifier, List<ChatMessage>>((ref
 class ChatNotifier extends StateNotifier<List<ChatMessage>> {
   final GeminiService _geminiService;
   bool _isLoading = false;
+  String? _error;
 
   ChatNotifier(this._geminiService) : super([]);
 
   bool get isLoading => _isLoading;
+  String? get error => _error;
 
   List<Map<String, String>> get _history {
     return state.map((msg) {
@@ -28,21 +31,23 @@ class ChatNotifier extends StateNotifier<List<ChatMessage>> {
   Future<void> sendMessage(String text) async {
     if (text.trim().isEmpty) return;
 
+    _error = null;
+    _isLoading = true;
+
     final userMessage = ChatMessage(
       text: text,
       type: MessageType.user,
     );
-
     state = [...state, userMessage];
-    _isLoading = true;
 
-    final streamingMessage = ChatMessage(
+    final aiMessageId = DateTime.now().millisecondsSinceEpoch.toString();
+    var aiMessage = ChatMessage(
+      id: aiMessageId,
       text: '',
       type: MessageType.model,
       isStreaming: true,
     );
-
-    state = [...state, streamingMessage];
+    state = [...state, aiMessage];
 
     try {
       final stream = _geminiService.sendMessageStream(
@@ -50,37 +55,33 @@ class ChatNotifier extends StateNotifier<List<ChatMessage>> {
         history: _history.sublist(0, _history.length - 1),
       );
 
-      String fullResponse = '';
+      String fullText = '';
 
       await for (final chunk in stream) {
-        fullResponse += chunk;
+        fullText += chunk;
+
+        aiMessage = aiMessage.copyWith(text: fullText);
+
         state = [
-          for (int i = 0; i < state.length; i++)
-            if (i == state.length - 1)
-              state[i].copyWith(text: fullResponse)
-            else
-              state[i]
+          ...state.sublist(0, state.length - 1),
+          aiMessage,
         ];
       }
 
       state = [
-        for (int i = 0; i < state.length; i++)
-          if (i == state.length - 1)
-            state[i].copyWith(isStreaming: false)
-          else
-            state[i]
+        ...state.sublist(0, state.length - 1),
+        aiMessage.copyWith(isStreaming: false),
       ];
+
     } catch (e) {
+      _error = e.toString();
       state = [
-        for (int i = 0; i < state.length; i++)
-          if (i == state.length - 1)
-            state[i].copyWith(
-              text: 'Error: ${e.toString()}',
-              isStreaming: false,
-              error: e.toString(),
-            )
-          else
-            state[i]
+        ...state.sublist(0, state.length - 1),
+        ChatMessage(
+          text: 'Error: ${e.toString()}',
+          type: MessageType.model,
+          error: e.toString(),
+        ),
       ];
     } finally {
       _isLoading = false;
@@ -89,5 +90,6 @@ class ChatNotifier extends StateNotifier<List<ChatMessage>> {
 
   void clearChat() {
     state = [];
+    _error = null;
   }
 }
