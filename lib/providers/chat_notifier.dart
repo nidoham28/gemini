@@ -5,7 +5,6 @@ import 'provider_selection_notifier.dart';
 
 final chatProvider =
 StateNotifierProvider<ChatNotifier, List<ChatMessage>>((ref) {
-  // Rebuilds (and resets chat) whenever the active provider/model changes.
   final aiService = ref.watch(aiServiceProvider);
   return ChatNotifier(aiService);
 });
@@ -22,9 +21,10 @@ class ChatNotifier extends StateNotifier<List<ChatMessage>> {
 
   void updateService(AiService? service) => _aiService = service;
 
+  // ── FIXED: 'model' পরিবর্তে 'assistant' ব্যবহার করা হয়েছে ──
   List<Map<String, String>> get _history => state.map((msg) {
     return {
-      'role': msg.type == MessageType.user ? 'user' : 'model',
+      'role': msg.type == MessageType.user ? 'user' : 'assistant',
       'content': msg.text,
     };
   }).toList();
@@ -47,8 +47,10 @@ class ChatNotifier extends StateNotifier<List<ChatMessage>> {
     _error = null;
     _isLoading = true;
 
+    // ১. বর্তমান ইউজার মেসেজ স্টেটে যোগ করা
     state = [...state, ChatMessage(text: text, type: MessageType.user)];
 
+    // ২. AI রেসপন্সের জন্য একটি খালি বাবল তৈরি করা
     final aiMessageId = DateTime.now().millisecondsSinceEpoch.toString();
     var aiMessage = ChatMessage(
       id: aiMessageId,
@@ -59,9 +61,17 @@ class ChatNotifier extends StateNotifier<List<ChatMessage>> {
     state = [...state, aiMessage];
 
     try {
+      // ── FIXED: History Slicing Logic ──
+      // আমরা এখন যে মেসেজটি পাঠাচ্ছি (যা শেষে যুক্ত হয়েছে), তার আগের সব মেসেজ হিস্ট্রিতে পাঠাবো।
+      // state.length - 1 ব্যবহার করা হয়েছে যাতে বর্তমান মেসেজ বাদ যায়।
+      List<Map<String, String>> previousHistory = [];
+      if (_history.length > 1) {
+        previousHistory = _history.sublist(0, _history.length - 1);
+      }
+
       final stream = _aiService!.sendMessageStream(
         message: text,
-        history: _history.sublist(0, _history.length - 2),
+        history: previousHistory,
       );
 
       String fullText = '';
